@@ -98,7 +98,9 @@ namespace FrontEnd
 
         private void ConnectButton_Click(object sender, RoutedEventArgs e)
         {
-            Client client = new Client();
+            ClientCommandHandler client = new ClientCommandHandler();
+            client.WaitForConnection();
+            client.Send(new RPCCommandConnect(0x0001));
             Console.WriteLine("Thread started");
         }
 

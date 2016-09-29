@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -12,6 +13,8 @@ public class Client
     private Sender m_Sender;
     private Thread m_Thread;
     private readonly object m_SendLock = new object();
+    //private readonly object m_StartLock = new object();
+    private volatile bool m_IsStarted = false;
 
     internal class Receiver
     {
@@ -19,7 +22,6 @@ public class Client
         internal Receiver(Client cbase)
         {
             m_Base = cbase;
-            m_Buffer = new byte[4096];
             m_ThreadRec = new Thread(Run);
             m_ThreadRec.Start();
         }
@@ -27,12 +29,18 @@ public class Client
         private void Run()
         {
             // main thread loop for receiving data...
-            m_Base.client.GetStream().Read(m_Buffer, 0, m_Buffer.Length);
+            try
+            {
+               // m_Base.client.GetStream().Read(m_Buffer, 0, m_Buffer.Length);
+            }
+            catch(System.IO.IOException)
+            {
+
+            }
         }
 
         private Thread m_ThreadRec;
         private Client m_Base;
-        private byte[] m_Buffer;
     }
 
     internal class Sender
@@ -41,35 +49,60 @@ public class Client
         internal Sender(Client cbase)
         {
             m_Base = cbase;
+            m_Stream = new MemoryStream();
             m_ThreadSend = new Thread(Run);
             m_ThreadSend.Start();
         }
 
         private void Run()
         {
-            // main thread loop for sending data...
             lock (m_Base.m_SendLock)
             {
                 while (true)
                 {
                     Monitor.Wait(m_Base.m_SendLock);
-                    m_Base.client.GetStream().Write(m_Buffer, 0, m_Buffer.GetLength(0));
+                    m_Stream.Seek(0, SeekOrigin.Begin);
+                    m_Stream.CopyTo(m_Base.client.GetStream());
+                    m_Stream.SetLength(0);
                 }
             }
         }
+
+        public bool SendWithSize(MemoryStream mstr)
+        {
+            lock (m_Base.m_SendLock)
+            {
+                byte[] size = BitConverter.GetBytes((UInt32)mstr.Length);
+                m_Stream.Write(size, 0, size.Length);
+                mstr.Seek(0, SeekOrigin.Begin);
+                mstr.CopyTo(m_Stream);
+                Monitor.Pulse(m_Base.m_SendLock);
+            }
+            return true;
+        }
+
         public bool Send(byte[] data)
         {
             lock (m_Base.m_SendLock)
             {
-                m_Buffer = data;
+                m_Stream.Write(data, 0, data.Length);
                 Monitor.Pulse(m_Base.m_SendLock);
+            }
+            return true;
+        }
+
+        public bool AddToSend(byte[] data)
+        {
+            lock (m_Base.m_SendLock)
+            {
+                m_Stream.Write(data, 0, data.Length);
             }
             return true;
         }
 
         private Thread m_ThreadSend;
         private Client m_Base;
-        private byte[] m_Buffer;
+        private MemoryStream m_Stream;
     }
 
     public Client()
@@ -79,15 +112,14 @@ public class Client
         this.m_Thread.Start();
     }
 
-    // This method that will be called when the thread is started
     public void Run()
     {
         try
         {
-            this.client.Connect("127.0.0.1", 9999);
-            this.m_Sender = new Sender(this);
-            this.m_Receiver = new Receiver(this);
-            //this.sender.SendData(Encoding.ASCII.GetBytes("hello"));
+            client.Connect("127.0.0.1", 9999);
+            m_Sender = new Sender(this);
+            m_Receiver = new Receiver(this);
+            m_IsStarted = true;
             while (true)
             {
                 try
@@ -106,13 +138,25 @@ public class Client
         {
             Console.WriteLine("SocketException " + this.client.ToString());
         }
+        m_IsStarted = false;
+    }
 
-
+    public void WaitForConnection()
+    {
+        while(!m_IsStarted)
+        {
+            Thread.Sleep(0);
+        }
     }
 
     public virtual bool Send(byte[] data)
     {
         return m_Sender.Send(data);
+    }
+
+    public virtual bool SendWithSize(MemoryStream mstr)
+    {
+        return m_Sender.SendWithSize(mstr);
     }
 
     public virtual int Receive(byte[] data)

@@ -1,6 +1,7 @@
 using System;
+using System.IO;
 
-   public class RPCCommand
+public class RPCCommand
     {
         protected enum CommandType {
             cFirst,
@@ -8,6 +9,7 @@ using System;
             cResponse,
             cConnect,
             cDisconnect,
+            cExit,
             cJSONCommand,
             cBinaryCommand,
             cLast
@@ -32,6 +34,12 @@ using System;
             return dataBytes;
         }
 
+        virtual public void Serialize(BinaryWriter writer)
+        {
+            writer.Write((Int32)m_Type);
+            writer.Write(m_Id);
+        }
+
         virtual public int Deserialize(byte[] data)
         {
             m_Type = (CommandType)BitConverter.ToInt32(data, 0);
@@ -54,7 +62,7 @@ public class RPCCommandConnect : RPCCommand
     static private UInt32 RPCVersion = 0x0001;
     private UInt32 m_Version;
 
-    RPCCommandConnect(UInt32 id) : base(CommandType.cConnect, id)
+    public RPCCommandConnect(UInt32 id) : base(CommandType.cConnect, id)
     {
         m_Version = RPCVersion;
     }
@@ -74,6 +82,12 @@ public class RPCCommandConnect : RPCCommand
         System.Buffer.BlockCopy(baseBytes, 0, dataBytes, 0, baseBytes.Length);
         System.Buffer.BlockCopy(versionBytes, 0, dataBytes, baseBytes.Length, versionBytes.Length);
         return dataBytes;
+    }
+
+    public override void Serialize(BinaryWriter writer)
+    {
+        base.Serialize(writer);
+        writer.Write(m_Version);
     }
 
 }
@@ -98,7 +112,9 @@ class ClientCommandHandler : Client, ICommandHandler
 
     public bool Send(RPCCommand cmd)
     {
-        //this.
-        throw new NotImplementedException();
+        var stream = new MemoryStream();
+        var writer = new BinaryWriter(stream);
+        cmd.Serialize(writer);
+        return SendWithSize(stream);
     }
 }
