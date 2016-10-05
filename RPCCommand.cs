@@ -105,6 +105,13 @@ class CommandDispatcher
 
 class ClientCommandHandler : Client, ICommandHandler
 {
+    private FrontEnd.DebugConsole m_DebugConsole;
+
+    public ClientCommandHandler(FrontEnd.DebugConsole debugConsole) : base(debugConsole)
+    {
+        m_DebugConsole = debugConsole;
+    }
+
     public bool Receive(RPCCommand cmd)
     {
         throw new NotImplementedException();

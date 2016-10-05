@@ -34,10 +34,14 @@ namespace FrontEnd
     /// </summary>
     public partial class MainWindow : Window
     {
+        private DebugConsole m_DebugConsole;
+
         public MainWindow()
         {
             InitializeComponent();
+            m_DebugConsole = new DebugConsole(textConsole);
         }
+
         void DrawRubbish(Image target)
         {
             DrawingVisual dv = new DrawingVisual();
@@ -54,42 +58,6 @@ namespace FrontEnd
             rtb.Render(dv);
             target.Source = rtb;
         }
-        // Convert an object to a byte array
-        public static byte[] ObjectToByteArray(Object obj)
-        {
-            BinaryFormatter bf = new BinaryFormatter();
-            using (var ms = new MemoryStream())
-            {
-                try
-                {
-                    bf.Serialize(ms, obj);
-                }
-                catch (SerializationException)
-                {
-
-                }
-                return ms.ToArray();
-            }
-        }
-
-        void HexDumpToConsole(object obj)
-        {
-            byte[] bytes = ObjectToByteArray(obj);
-            ToConsole(BitConverter.ToString(bytes));
-        }
-
-        void HexDumpToConsole(int val)
-        {
-            ToConsole(BitConverter.ToString(BitConverter.GetBytes(val)));
-        }
-
-        void ToConsole(string str)
-        {
-            Console.WriteLine(str);
-            textConsole.AppendText(ConsoleStrCount + " " +str + "\n");
-            textConsole.ScrollToEnd();
-            ++ConsoleStrCount;
-        }
 
         private void DrawButton_Click(object sender, RoutedEventArgs e)
         {
@@ -98,7 +66,7 @@ namespace FrontEnd
 
         private void ConnectButton_Click(object sender, RoutedEventArgs e)
         {
-            ClientCommandHandler client = new ClientCommandHandler();
+            ClientCommandHandler client = new ClientCommandHandler(m_DebugConsole);
             client.WaitForConnection();
             client.Send(new RPCCommandConnect(0x0001));
             Console.WriteLine("Thread started");
@@ -106,11 +74,9 @@ namespace FrontEnd
 
         private void TextButton_Click(object sender, RoutedEventArgs e)
         {
-            ToConsole("Text");
-            HexDumpToConsole(32);
+            m_DebugConsole.ToConsole("Text");
+            m_DebugConsole.HexDumpToConsole(32);
         }
-
-        private int ConsoleStrCount = 0;
 
         private void TestButton_Click(object sender, RoutedEventArgs e)
         {

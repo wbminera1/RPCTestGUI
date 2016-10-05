@@ -7,7 +7,7 @@ using System.Threading;
 
 public class Client
 {
-    private TcpClient client;
+    private TcpClient m_Client;
 
     private Receiver m_Receiver;
     private Sender m_Sender;
@@ -15,6 +15,9 @@ public class Client
     private readonly object m_SendLock = new object();
     //private readonly object m_StartLock = new object();
     private volatile bool m_IsStarted = false;
+
+    private FrontEnd.DebugConsole m_DebugConsole;
+
 
     internal class Receiver
     {
@@ -28,14 +31,30 @@ public class Client
 
         private void Run()
         {
-            // main thread loop for receiving data...
-            try
+            byte[] buffer = new byte[1024];
+            while(true)
             {
-               // m_Base.client.GetStream().Read(m_Buffer, 0, m_Buffer.Length);
-            }
-            catch(System.IO.IOException)
-            {
-
+                try
+                {
+                    int read = m_Base.m_Client.GetStream().Read(buffer, 0, buffer.Length);
+                    if(read > 0)
+                    {
+                        lock (m_Base.m_DebugConsole)
+                        {
+                            byte[] arr = new byte[read];
+                            Array.Copy(buffer, arr, read);
+                            m_Base.m_DebugConsole.ToConsole(arr);
+                        }
+                    }
+                }
+                catch (System.IO.IOException)
+                {
+                    break;
+                }
+                catch (System.InvalidOperationException)
+                {
+                    break;
+                }
             }
         }
 
@@ -61,8 +80,14 @@ public class Client
                 while (true)
                 {
                     Monitor.Wait(m_Base.m_SendLock);
+                    lock (m_Base.m_DebugConsole)
+                    {
+                        byte[] arr = new byte[m_Stream.Length];
+                        Array.Copy(m_Stream.GetBuffer(), arr, m_Stream.Length);
+                        m_Base.m_DebugConsole.ToConsole(arr);
+                    }
                     m_Stream.Seek(0, SeekOrigin.Begin);
-                    m_Stream.CopyTo(m_Base.client.GetStream());
+                    m_Stream.CopyTo(m_Base.m_Client.GetStream());
                     m_Stream.SetLength(0);
                 }
             }
@@ -105,18 +130,20 @@ public class Client
         private MemoryStream m_Stream;
     }
 
-    public Client()
+    public Client(FrontEnd.DebugConsole debugConsole)
     {
-        this.client = new TcpClient();
-        this.m_Thread = new Thread(Run);
-        this.m_Thread.Start();
-    }
+        m_Client = new TcpClient();
+        m_Thread = new Thread(Run);
+        m_Thread.Start();
+        m_DebugConsole = debugConsole;
 
-    public void Run()
+}
+
+public void Run()
     {
         try
         {
-            client.Connect("127.0.0.1", 9999);
+            m_Client.Connect("127.0.0.1", 9999);
             m_Sender = new Sender(this);
             m_Receiver = new Receiver(this);
             m_IsStarted = true;
@@ -136,7 +163,7 @@ public class Client
         }
         catch (System.Net.Sockets.SocketException)
         {
-            Console.WriteLine("SocketException " + this.client.ToString());
+            Console.WriteLine("SocketException " + this.m_Client.ToString());
         }
         m_IsStarted = false;
     }
