@@ -57,6 +57,7 @@
     </ApplicationDefinition>
     <Compile Include="Client.cs" />
     <Compile Include="DebugConsole.cs" />
+    <Compile Include="Draw.cs" />
     <Compile Include="RPCCommand.cs" />
     <Compile Include="SynchronousSocketClient.cs" />
     <Page Include="MainWindow.xaml">

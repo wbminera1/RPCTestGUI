@@ -5,20 +5,19 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:FrontEnd"
         mc:Ignorable="d"
-        Title="MainWindow" Height="550.362" Width="544.159">
-    <Grid Margin="0">
+        Title="MainWindow" Height="550" Width="660">
+    <Grid Margin="0,0,0,0">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition/>
-            <ColumnDefinition Width="0*"/>
+            <ColumnDefinition Width="530"/>
+            <ColumnDefinition Width="90"/>
         </Grid.ColumnDefinitions>
         <Button x:Name="DrawButton" Content="Draw" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="75" Height="20" Click="DrawButton_Click"/>
-        <Button x:Name="ConnectButton" Content="Connect" HorizontalAlignment="Left" Margin="90,10,0,0" VerticalAlignment="Top" Width="75" RenderTransformOrigin="0.208,0.506" Height="20" Click="ConnectButton_Click"/>
+        <Button x:Name="ConnectButton" Content="Connect" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="75" RenderTransformOrigin="0.208,0.506" Height="20" Click="ConnectButton_Click" Grid.Column="1"/>
         <TextBox x:Name="textConsole" HorizontalAlignment="Left" Height="139" Margin="10,355,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="512"/>
-        <Border BorderBrush="Black" BorderThickness="1" HorizontalAlignment="Left" Height="256" Margin="10,43,0,0" VerticalAlignment="Top" Width="512" Background="Black">
-            <Image x:Name="MainImage" HorizontalAlignment="Left" Height="256" Margin="0,0,0,0" VerticalAlignment="Top" Width="512"/>
-        </Border>
+        <Image x:Name="MainImage" HorizontalAlignment="Left" Height="256" Margin="10,40,0,0" VerticalAlignment="Top" Width="512"/>
         <Button x:Name="TextButton" Content="Text" HorizontalAlignment="Left" Margin="170,10,0,0" VerticalAlignment="Top" Width="75" RenderTransformOrigin="0.208,0.506" Height="20" Click="TextButton_Click"/>
         <Button x:Name="TestButton" Content="Test" HorizontalAlignment="Left" Margin="250,10,0,0" VerticalAlignment="Top" Width="75" RenderTransformOrigin="0.208,0.506" Height="20" Click="TestButton_Click"/>
+        <Button x:Name="DisconnectButton" Content="Disconnect" HorizontalAlignment="Left" Margin="10,40,0,0" VerticalAlignment="Top" Width="75" RenderTransformOrigin="0.208,0.506" Height="20" Click="DisconnectButton_Click" Grid.Column="1"/>
 
     </Grid>
 </Window>

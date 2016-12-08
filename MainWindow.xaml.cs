@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.IO;
 using System.Runtime.Serialization;
+using System.Collections.Generic;
 
 namespace FrontEnd
 {
@@ -35,52 +36,61 @@ namespace FrontEnd
     public partial class MainWindow : Window
     {
         private DebugConsole m_DebugConsole;
+        private List<ClientCommandHandler> m_Clients = new List<ClientCommandHandler>();
+        private Draw m_Draw;
 
         public MainWindow()
         {
             InitializeComponent();
+            ConnectButton.Background = Brushes.Green;
             m_DebugConsole = new DebugConsole(textConsole);
-        }
-
-        void DrawRubbish(Image target)
-        {
-            DrawingVisual dv = new DrawingVisual();
-            using (DrawingContext dc = dv.RenderOpen())
-            {
-                Random rand = new Random();
-
-                for (int i = 0; i < 200; i++)
-                    dc.DrawRectangle(Brushes.Red, null, new Rect(rand.NextDouble() * target.Width, rand.NextDouble() * target.Height, 1, 1));
-
-                dc.Close();
-            }
-            RenderTargetBitmap rtb = new RenderTargetBitmap((int)target.Width, (int)target.Height, 96, 96, PixelFormats.Pbgra32);
-            rtb.Render(dv);
-            target.Source = rtb;
+            m_Draw = new Draw();
+            m_Draw.Init((int)MainImage.Width, (int)MainImage.Height, 4);
         }
 
         private void DrawButton_Click(object sender, RoutedEventArgs e)
         {
-            DrawRubbish(MainImage);
-        }
-
-        private void ConnectButton_Click(object sender, RoutedEventArgs e)
-        {
-            ClientCommandHandler client = new ClientCommandHandler(m_DebugConsole);
-            client.WaitForConnection();
-            client.Send(new RPCCommandConnect(0x0001));
-            Console.WriteLine("Thread started");
+            //m_Draw.TestSetPixel();
+            m_Draw.TestLine();
+            BitmapSource bs = m_Draw.RawToBitmap();
+            MainImage.Source = bs;
         }
 
         private void TextButton_Click(object sender, RoutedEventArgs e)
         {
-            m_DebugConsole.ToConsole("Text");
+            m_DebugConsole.WriteLine("Text");
             m_DebugConsole.HexDumpToConsole(32);
         }
 
         private void TestButton_Click(object sender, RoutedEventArgs e)
         {
             RPCCommand.Test();
+        }
+
+        private void ConnectButton_Click(object sender, RoutedEventArgs e)
+        {
+            ClientCommandHandler client = new ClientCommandHandler(m_DebugConsole);
+            if (client.WaitForConnection())
+            {
+                m_Clients.Add(client);
+                client.Send(new RPCCommandConnect(0x0001));
+                m_DebugConsole.WriteLine("Thread started");
+                ConnectButton.Background = Brushes.Gray;
+            }
+            else
+            {
+                m_DebugConsole.WriteLine("Thread not started");
+            }
+        }
+
+        private void DisconnectButton_Click(object sender, RoutedEventArgs e)
+        {
+            if(m_Clients.Count > 0)
+            {
+                int idx = m_Clients.Count - 1;
+                m_Clients[idx].Stop();
+                m_Clients.RemoveAt(idx);
+            }
         }
     }
 }

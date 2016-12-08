@@ -23,20 +23,20 @@ namespace FrontEnd
         public void HexDumpToConsole(object obj)
         {
             byte[] bytes = ObjectToByteArray(obj);
-            ToConsole(BitConverter.ToString(bytes));
+            WriteLine(BitConverter.ToString(bytes));
         }
 
         public void HexDumpToConsole(int val)
         {
-            ToConsole(BitConverter.ToString(BitConverter.GetBytes(val)));
+            WriteLine(BitConverter.ToString(BitConverter.GetBytes(val)));
         }
 
-        public void ToConsole(byte[] data)
+        public void WriteLine(byte[] data)
         {
-            ToConsole(BitConverter.ToString(data));
+            WriteLine(BitConverter.ToString(data));
         }
 
-        public void ToConsole(string str)
+        public void WriteLine(string str)
         {
             Console.WriteLine(str);
 

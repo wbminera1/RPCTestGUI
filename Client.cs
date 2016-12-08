@@ -13,8 +13,9 @@ public class Client
     private Sender m_Sender;
     private Thread m_Thread;
     private readonly object m_SendLock = new object();
-    //private readonly object m_StartLock = new object();
     private volatile bool m_IsStarted = false;
+    private volatile bool m_IsDisconnected = false;
+    private volatile bool m_Stop = false;
 
     private FrontEnd.DebugConsole m_DebugConsole;
 
@@ -32,7 +33,8 @@ public class Client
         private void Run()
         {
             byte[] buffer = new byte[1024];
-            while(true)
+            m_Started = true;
+            while (true)
             {
                 try
                 {
@@ -43,7 +45,7 @@ public class Client
                         {
                             byte[] arr = new byte[read];
                             Array.Copy(buffer, arr, read);
-                            m_Base.m_DebugConsole.ToConsole(arr);
+                            m_Base.m_DebugConsole.WriteLine(arr);
                         }
                     }
                 }
@@ -60,6 +62,7 @@ public class Client
 
         private Thread m_ThreadRec;
         private Client m_Base;
+        public volatile bool m_Started = false;
     }
 
     internal class Sender
@@ -77,6 +80,7 @@ public class Client
         {
             lock (m_Base.m_SendLock)
             {
+                m_Started = true;
                 while (true)
                 {
                     Monitor.Wait(m_Base.m_SendLock);
@@ -84,7 +88,7 @@ public class Client
                     {
                         byte[] arr = new byte[m_Stream.Length];
                         Array.Copy(m_Stream.GetBuffer(), arr, m_Stream.Length);
-                        m_Base.m_DebugConsole.ToConsole(arr);
+                        m_Base.m_DebugConsole.WriteLine(arr);
                     }
                     m_Stream.Seek(0, SeekOrigin.Begin);
                     m_Stream.CopyTo(m_Base.m_Client.GetStream());
@@ -128,6 +132,7 @@ public class Client
         private Thread m_ThreadSend;
         private Client m_Base;
         private MemoryStream m_Stream;
+        public volatile bool m_Started = false;
     }
 
     public Client(FrontEnd.DebugConsole debugConsole)
@@ -136,44 +141,62 @@ public class Client
         m_Thread = new Thread(Run);
         m_Thread.Start();
         m_DebugConsole = debugConsole;
-
-}
+    }
 
 public void Run()
     {
+        m_IsStarted = false;
+        m_Stop = false;
+        m_IsDisconnected = false;
         try
         {
             m_Client.Connect("127.0.0.1", 9999);
             m_Sender = new Sender(this);
             m_Receiver = new Receiver(this);
+            while(!m_Sender.m_Started || !m_Receiver.m_Started)
+            {
+                Thread.Sleep(10);
+            }
             m_IsStarted = true;
-            while (true)
+            while (!m_Stop)
             {
                 try
                 {
-                    //Console.WriteLine("Running in its own thread.");
                     Thread.Sleep(100);
-                    //client.BeginConnect()
                 }
                 catch (ThreadAbortException)
                 {
                     Console.Write("ThreadAbortException");
+                    m_IsDisconnected = true;
                 }
             }
+            m_Client.Close();
+            m_DebugConsole.WriteLine("Client Stopping");
         }
-        catch (System.Net.Sockets.SocketException)
+        catch (SocketException)
         {
             Console.WriteLine("SocketException " + this.m_Client.ToString());
+            m_IsDisconnected = true;
         }
         m_IsStarted = false;
     }
 
-    public void WaitForConnection()
+    public bool WaitForConnection()
     {
         while(!m_IsStarted)
         {
-            Thread.Sleep(0);
+            if(m_IsDisconnected)
+            {
+                return false;
+            }
+            Thread.Sleep(100);
         }
+        return true;
+    }
+
+    public void Stop()
+    {
+        m_Stop = true;
     }
 
     public virtual bool Send(byte[] data)
