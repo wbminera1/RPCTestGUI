@@ -58,6 +58,7 @@
     <Compile Include="Client.cs" />
     <Compile Include="DebugConsole.cs" />
     <Compile Include="Draw.cs" />
+    <Compile Include="RayTrace\RayTrace.cs" />
     <Compile Include="RPCCommand.cs" />
     <Compile Include="SynchronousSocketClient.cs" />
     <Page Include="MainWindow.xaml">
@@ -100,6 +101,18 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="RayTrace\Cameras\" />
+    <Folder Include="RayTrace\Lights\" />
+    <Folder Include="RayTrace\Samplers\" />
+    <Folder Include="RayTrace\Shapes\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Mono.GameMath\Mono.GameMath\Mono.GameMath.csproj">
+      <Project>{DAC0541A-CB1C-44CA-BE7C-BF6CD5A8A9EE}</Project>
+      <Name>Mono.GameMath</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

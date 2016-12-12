@@ -51,8 +51,12 @@ namespace FrontEnd
         private void DrawButton_Click(object sender, RoutedEventArgs e)
         {
             //m_Draw.TestSetPixel();
-            m_Draw.TestLine();
-            BitmapSource bs = m_Draw.RawToBitmap();
+            //m_Draw.TestLine();
+            //BitmapSource bs = m_Draw.RawToBitmap();
+            RayTrace.Sphere.Test();
+            RayTrace.RayTrace rt = new RayTrace.RayTrace();
+            RayTrace.RGBImage image = rt.Trace((int)MainImage.Width, (int)MainImage.Height);
+            BitmapSource bs = image.RawToBitmap();
             MainImage.Source = bs;
         }
 
