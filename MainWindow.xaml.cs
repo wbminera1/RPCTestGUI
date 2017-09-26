@@ -53,11 +53,11 @@ namespace FrontEnd
             //m_Draw.TestSetPixel();
             //m_Draw.TestLine();
             //BitmapSource bs = m_Draw.RawToBitmap();
-            RayTrace.Sphere.Test();
-            RayTrace.RayTrace rt = new RayTrace.RayTrace();
-            RayTrace.RGBImage image = rt.Trace((int)MainImage.Width, (int)MainImage.Height);
-            BitmapSource bs = image.RawToBitmap();
-            MainImage.Source = bs;
+//             RayTrace.Sphere.Test();
+//             RayTrace.RayTrace rt = new RayTrace.RayTrace();
+//             RayTrace.RGBImage image = rt.Trace((int)MainImage.Width, (int)MainImage.Height);
+//             BitmapSource bs = image.RawToBitmap();
+//             MainImage.Source = bs;
         }
 
         private void TextButton_Click(object sender, RoutedEventArgs e)
@@ -65,12 +65,10 @@ namespace FrontEnd
             m_DebugConsole.WriteLine("Text");
             m_DebugConsole.HexDumpToConsole(32);
         }
-
         private void TestButton_Click(object sender, RoutedEventArgs e)
         {
             RPCCommand.Test();
         }
-
         private void ConnectButton_Click(object sender, RoutedEventArgs e)
         {
             ClientCommandHandler client = new ClientCommandHandler(m_DebugConsole);
@@ -86,7 +84,6 @@ namespace FrontEnd
                 m_DebugConsole.WriteLine("Thread not started");
             }
         }
-
         private void DisconnectButton_Click(object sender, RoutedEventArgs e)
         {
             if(m_Clients.Count > 0)
@@ -94,6 +91,25 @@ namespace FrontEnd
                 int idx = m_Clients.Count - 1;
                 m_Clients[idx].Stop();
                 m_Clients.RemoveAt(idx);
+            }
+        }
+        private void RunButton_Click(object sender, RoutedEventArgs e)
+        {
+            new Thread(RunAgent).Start();
+        }
+        private void RunAgent()
+        {
+            ProcessStartInfo start = new ProcessStartInfo();
+            start.Arguments = "args";
+            start.FileName = @"C:\Temp\TAgent.exe";
+            //start.WindowStyle = ProcessWindowStyle.Hidden;
+            start.WindowStyle = ProcessWindowStyle.Normal;
+            start.CreateNoWindow = true;
+            int exitCode;
+            using (Process proc = Process.Start(start))
+            {
+                proc.WaitForExit();
+                exitCode = proc.ExitCode;
             }
         }
     }

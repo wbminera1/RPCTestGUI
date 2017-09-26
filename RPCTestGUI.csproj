@@ -55,10 +55,16 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="Client.cs" />
     <Compile Include="DebugConsole.cs" />
     <Compile Include="Draw.cs" />
+    <Compile Include="RayTrace\Intersection.cs" />
+    <Compile Include="RayTrace\Primitive.cs" />
+    <Compile Include="RayTrace\Ray.cs" />
     <Compile Include="RayTrace\RayTrace.cs" />
+    <Compile Include="RayTrace\RGBImage.cs" />
+    <Compile Include="RayTrace\Sampler.cs" />
+    <Compile Include="RayTrace\Scene.cs" />
+    <Compile Include="RayTrace\Sphere.cs" />
     <Compile Include="RPCCommand.cs" />
     <Compile Include="SynchronousSocketClient.cs" />
     <Page Include="MainWindow.xaml">
@@ -114,6 +120,7 @@
       <Name>Mono.GameMath</Name>
     </ProjectReference>
   </ItemGroup>
+  <Import Project="Shared\Shared.projitems" Label="Shared" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

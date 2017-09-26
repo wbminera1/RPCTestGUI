@@ -1,13 +1,17 @@
 using System;
-using System.Diagnostics;
 using System.IO;
+using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 
 public class Client
 {
     private TcpClient m_Client;
+    private TcpListener m_Listener;
+
+    private string m_Hostname;
+    private int m_Port;
+    private bool m_IsServer;
 
     private Receiver m_Receiver;
     private Sender m_Sender;
@@ -17,7 +21,7 @@ public class Client
     private volatile bool m_IsDisconnected = false;
     private volatile bool m_Stop = false;
 
-    private FrontEnd.DebugConsole m_DebugConsole;
+    //private FrontEnd.DebugConsole m_DebugConsole;
 
 
     internal class Receiver
@@ -39,14 +43,19 @@ public class Client
                 try
                 {
                     int read = m_Base.m_Client.GetStream().Read(buffer, 0, buffer.Length);
-                    if(read > 0)
+                    if (read > 0)
                     {
-                        lock (m_Base.m_DebugConsole)
+/*
+                        if(m_Base.m_DebugConsole != null)
                         {
-                            byte[] arr = new byte[read];
-                            Array.Copy(buffer, arr, read);
-                            m_Base.m_DebugConsole.WriteLine(arr);
+                            lock (m_Base.m_DebugConsole)
+                            {
+                                byte[] arr = new byte[read];
+                                Array.Copy(buffer, arr, read);
+                                m_Base.m_DebugConsole.WriteLine(arr);
+                            }
                         }
+*/
                     }
                 }
                 catch (System.IO.IOException)
@@ -67,7 +76,6 @@ public class Client
 
     internal class Sender
     {
-
         internal Sender(Client cbase)
         {
             m_Base = cbase;
@@ -75,7 +83,6 @@ public class Client
             m_ThreadSend = new Thread(Run);
             m_ThreadSend.Start();
         }
-
         private void Run()
         {
             lock (m_Base.m_SendLock)
@@ -84,19 +91,23 @@ public class Client
                 while (true)
                 {
                     Monitor.Wait(m_Base.m_SendLock);
-                    lock (m_Base.m_DebugConsole)
+/*
+                    if (m_Base.m_DebugConsole != null)
                     {
-                        byte[] arr = new byte[m_Stream.Length];
-                        Array.Copy(m_Stream.GetBuffer(), arr, m_Stream.Length);
-                        m_Base.m_DebugConsole.WriteLine(arr);
+                        lock (m_Base.m_DebugConsole)
+                        {
+                            byte[] arr = new byte[m_Stream.Length];
+                            Array.Copy(m_Stream.GetBuffer(), arr, m_Stream.Length);
+                            m_Base.m_DebugConsole.WriteLine(arr);
+                        }
                     }
+*/
                     m_Stream.Seek(0, SeekOrigin.Begin);
                     m_Stream.CopyTo(m_Base.m_Client.GetStream());
                     m_Stream.SetLength(0);
                 }
             }
         }
-
         public bool SendWithSize(MemoryStream mstr)
         {
             lock (m_Base.m_SendLock)
@@ -109,7 +120,6 @@ public class Client
             }
             return true;
         }
-
         public bool Send(byte[] data)
         {
             lock (m_Base.m_SendLock)
@@ -119,7 +129,6 @@ public class Client
             }
             return true;
         }
-
         public bool AddToSend(byte[] data)
         {
             lock (m_Base.m_SendLock)
@@ -134,26 +143,59 @@ public class Client
         private MemoryStream m_Stream;
         public volatile bool m_Started = false;
     }
-
-    public Client(FrontEnd.DebugConsole debugConsole)
+    public Client(/*FrontEnd.DebugConsole debugConsole*/)
     {
-        m_Client = new TcpClient();
+        //m_DebugConsole = debugConsole;
+    }
+    public void Connect(string hostname, int port)
+    {
+        m_Hostname = hostname;
+        m_Port = port;
+        m_IsServer = false;
         m_Thread = new Thread(Run);
         m_Thread.Start();
-        m_DebugConsole = debugConsole;
     }
-
-public void Run()
+    public void Listen(int port)
+    {
+        m_Hostname = "";
+        m_Port = port;
+        m_IsServer = true;
+        m_Thread = new Thread(Run);
+        m_Thread.Start();
+    }
+    private void Run()
     {
         m_IsStarted = false;
         m_Stop = false;
         m_IsDisconnected = false;
         try
         {
-            m_Client.Connect("127.0.0.1", 9999);
+            if(m_IsServer)
+            {
+                Console.WriteLine("Listening...");
+                var al = Dns.GetHostEntry("localhost").AddressList;
+                foreach(var addr in al)
+                {
+                    if(addr.AddressFamily == AddressFamily.InterNetwork)
+                    {
+                        m_Listener = new TcpListener(addr, m_Port);
+                        Console.WriteLine("Listening on " + addr.ToString());
+                        m_Listener.Start(1);
+                        m_Client = m_Listener.AcceptTcpClient();
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                Console.WriteLine("Connecting...");
+                m_Client = new TcpClient();
+                m_Client.Connect(m_Hostname, m_Port);
+            }
+            Console.WriteLine("Connected");
             m_Sender = new Sender(this);
             m_Receiver = new Receiver(this);
-            while(!m_Sender.m_Started || !m_Receiver.m_Started)
+            while (!m_Sender.m_Started || !m_Receiver.m_Started)
             {
                 Thread.Sleep(10);
             }
@@ -166,12 +208,12 @@ public void Run()
                 }
                 catch (ThreadAbortException)
                 {
-                    Console.Write("ThreadAbortException");
+                    Console.WriteLine("ThreadAbortException");
                     m_IsDisconnected = true;
                 }
             }
             m_Client.Close();
-            m_DebugConsole.WriteLine("Client Stopping");
+            Console.WriteLine("Client Stopping");
         }
         catch (SocketException)
         {
@@ -183,9 +225,9 @@ public void Run()
 
     public bool WaitForConnection()
     {
-        while(!m_IsStarted)
+        while (!m_IsStarted)
         {
-            if(m_IsDisconnected)
+            if (m_IsDisconnected)
             {
                 return false;
             }
@@ -193,22 +235,18 @@ public void Run()
         }
         return true;
     }
-
     public void Stop()
     {
         m_Stop = true;
     }
-
     public virtual bool Send(byte[] data)
     {
         return m_Sender.Send(data);
     }
-
     public virtual bool SendWithSize(MemoryStream mstr)
     {
         return m_Sender.SendWithSize(mstr);
     }
-
     public virtual int Receive(byte[] data)
     {
         return 0;
