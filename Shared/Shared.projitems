@@ -9,6 +9,9 @@
     <Import_RootNamespace>Shared</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)AsynchronousClient.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Client.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)RPCCommand.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SynchronousSocketClient.cs" />
   </ItemGroup>
 </Project>

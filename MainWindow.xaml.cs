@@ -14,21 +14,6 @@ using System.Collections.Generic;
 
 namespace FrontEnd
 {
-    // State object for receiving data from remote device.
-    public class StateObject
-    {
-        // Client socket.
-        public Socket workSocket = null;
-        // Size of receive buffer.
-        public const int BufferSize = 256;
-        // Receive buffer.
-        public byte[] buffer = new byte[BufferSize];
-        // Received data string.
-        public StringBuilder sb = new StringBuilder();
-    }
-
- 
-
 
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -71,7 +56,7 @@ namespace FrontEnd
         }
         private void ConnectButton_Click(object sender, RoutedEventArgs e)
         {
-            ClientCommandHandler client = new ClientCommandHandler(m_DebugConsole);
+            ClientCommandHandler client = new ClientCommandHandler();
             if (client.WaitForConnection())
             {
                 m_Clients.Add(client);

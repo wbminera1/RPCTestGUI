@@ -105,11 +105,11 @@ class CommandDispatcher
 
 class ClientCommandHandler : Client, ICommandHandler
 {
-    private FrontEnd.DebugConsole m_DebugConsole;
+//    private FrontEnd.DebugConsole m_DebugConsole;
 
-    public ClientCommandHandler(FrontEnd.DebugConsole debugConsole) : base(/*debugConsole*/)
+    public ClientCommandHandler(/*FrontEnd.DebugConsole debugConsole*/) : base(/*debugConsole*/)
     {
-        m_DebugConsole = debugConsole;
+        //m_DebugConsole = debugConsole;
         Connect("127.0.0.1", 9999);
     }
 
