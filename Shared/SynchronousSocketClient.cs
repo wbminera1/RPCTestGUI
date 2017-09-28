@@ -16,7 +16,9 @@ public class SynchronousSocketClient
             {
                 // Establish the remote endpoint for the socket.
                 // This example uses port 11000 on the local computer.
+#pragma warning disable CS0618 // Type or member is obsolete
                 IPHostEntry ipHostInfo = Dns.Resolve(Dns.GetHostName());
+#pragma warning restore CS0618 // Type or member is obsolete
                 IPAddress ipAddress = ipHostInfo.AddressList[0];
                 IPEndPoint remoteEP = new IPEndPoint(ipAddress, 11000);
 

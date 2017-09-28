@@ -44,7 +44,9 @@ public class AsynchronousClient
                 // Establish the remote endpoint for the socket.
                 // The name of the 
                 // remote device is "host.contoso.com".
+#pragma warning disable CS0618 // Type or member is obsolete
                 IPHostEntry ipHostInfo = Dns.Resolve("127.0.0.1");
+#pragma warning restore CS0618 // Type or member is obsolete
                 IPAddress ipAddress = ipHostInfo.AddressList[0];
                 IPEndPoint remoteEP = new IPEndPoint(ipAddress, port);
 
