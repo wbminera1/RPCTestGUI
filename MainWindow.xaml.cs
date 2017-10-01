@@ -52,7 +52,10 @@ namespace FrontEnd
         }
         private void TestButton_Click(object sender, RoutedEventArgs e)
         {
-            RPCCommand.Test();
+            //RPCCommand.Test();
+            RPCObject.Test();
+            RPCRequest.Test();
+            //Shared.GenericFactory<RPCRequest.RequestType>.Test();
         }
         private void ConnectButton_Click(object sender, RoutedEventArgs e)
         {
@@ -60,7 +63,7 @@ namespace FrontEnd
             if (client.WaitForConnection())
             {
                 m_Clients.Add(client);
-                client.Send(new RPCCommandConnect(0x0001));
+                client.Send(new RPCRequestConnect(0x0001));
                 m_DebugConsole.WriteLine("Thread started");
                 ConnectButton.Background = Brushes.Gray;
             }
@@ -86,7 +89,7 @@ namespace FrontEnd
         {
             ProcessStartInfo start = new ProcessStartInfo();
             start.Arguments = "args";
-            start.FileName = @"C:\Temp\TAgent.exe";
+            start.FileName = @"D:\Temp\TAgent.exe";
             //start.WindowStyle = ProcessWindowStyle.Hidden;
             start.WindowStyle = ProcessWindowStyle.Normal;
             start.CreateNoWindow = true;

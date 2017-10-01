@@ -11,7 +11,9 @@
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)AsynchronousClient.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Client.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)GenericFactory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)RPCCommand.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Singleton.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SynchronousSocketClient.cs" />
   </ItemGroup>
 </Project>

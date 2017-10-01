@@ -6,6 +6,9 @@ using System.Threading;
 
 public class Client
 {
+    public delegate void OnReceived(byte[] data);
+    public delegate void OnClosed();
+
     private TcpClient m_Client;
     private TcpListener m_Listener;
 
@@ -17,25 +20,25 @@ public class Client
     private Sender m_Sender;
     private Thread m_Thread;
     private readonly object m_SendLock = new object();
+    private readonly object m_ConnectLock = new object();
     private volatile bool m_IsStarted = false;
     private volatile bool m_IsDisconnected = false;
-    private volatile bool m_Stop = false;
 
-    //private FrontEnd.DebugConsole m_DebugConsole;
-
+    protected OnReceived m_OnReceived;
+    protected OnClosed m_OnClosed;
 
     internal class Receiver
     {
-
         internal Receiver(Client cbase)
         {
             m_Base = cbase;
             m_ThreadRec = new Thread(Run);
+            m_ThreadRec.Name = "Client.Receiver";
             m_ThreadRec.Start();
         }
-
         private void Run()
         {
+            Console.WriteLine("Receiver started");
             byte[] buffer = new byte[1024];
             m_Started = true;
             while (true)
@@ -43,37 +46,27 @@ public class Client
                 try
                 {
                     int read = m_Base.m_Client.GetStream().Read(buffer, 0, buffer.Length);
-                    if (read > 0)
+                    Console.WriteLine("Receiver - read " + read);
+                    if (read <= 0)
                     {
-/*
-                        if(m_Base.m_DebugConsole != null)
-                        {
-                            lock (m_Base.m_DebugConsole)
-                            {
-                                byte[] arr = new byte[read];
-                                Array.Copy(buffer, arr, read);
-                                m_Base.m_DebugConsole.WriteLine(arr);
-                            }
-                        }
-*/
+                        break;
                     }
+                    m_Base.m_OnReceived?.Invoke(buffer);
                 }
-                catch (System.IO.IOException)
-                {
-                    break;
-                }
-                catch (System.InvalidOperationException)
+                catch (Exception)
                 {
                     break;
                 }
             }
+            m_Base.Stop();
+            m_Started = false;
+            Console.WriteLine("Receiver stopped");
         }
 
         private Thread m_ThreadRec;
         private Client m_Base;
         public volatile bool m_Started = false;
     }
-
     internal class Sender
     {
         internal Sender(Client cbase)
@@ -81,32 +74,27 @@ public class Client
             m_Base = cbase;
             m_Stream = new MemoryStream();
             m_ThreadSend = new Thread(Run);
+            m_ThreadSend.Name = "Client.Sender";
             m_ThreadSend.Start();
         }
         private void Run()
         {
+            Console.WriteLine("Sender started");
             lock (m_Base.m_SendLock)
             {
                 m_Started = true;
-                while (true)
+                while (m_Started)
                 {
                     Monitor.Wait(m_Base.m_SendLock);
-/*
-                    if (m_Base.m_DebugConsole != null)
+                    if(m_Stream.Length > 0)
                     {
-                        lock (m_Base.m_DebugConsole)
-                        {
-                            byte[] arr = new byte[m_Stream.Length];
-                            Array.Copy(m_Stream.GetBuffer(), arr, m_Stream.Length);
-                            m_Base.m_DebugConsole.WriteLine(arr);
-                        }
+                        m_Stream.Seek(0, SeekOrigin.Begin);
+                        m_Stream.CopyTo(m_Base.m_Client.GetStream());
+                        m_Stream.SetLength(0);
                     }
-*/
-                    m_Stream.Seek(0, SeekOrigin.Begin);
-                    m_Stream.CopyTo(m_Base.m_Client.GetStream());
-                    m_Stream.SetLength(0);
                 }
             }
+            Console.WriteLine("Sender stopped");
         }
         public bool SendWithSize(MemoryStream mstr)
         {
@@ -137,15 +125,28 @@ public class Client
             }
             return true;
         }
+        public void Stop()
+        {
+            if(m_Started)
+            {
+                lock (m_Base.m_SendLock)
+                {
+                    m_Started = false;
+                    m_Stream.SetLength(0);
+                    Monitor.Pulse(m_Base.m_SendLock);
+                }
+            }
+        }
 
         private Thread m_ThreadSend;
         private Client m_Base;
         private MemoryStream m_Stream;
         public volatile bool m_Started = false;
     }
-    public Client(/*FrontEnd.DebugConsole debugConsole*/)
+    public Client(OnReceived onReceived = null, OnClosed onClosed = null)
     {
-        //m_DebugConsole = debugConsole;
+        m_OnReceived = onReceived;
+        m_OnClosed = onClosed;
     }
     public void Connect(string hostname, int port)
     {
@@ -153,6 +154,7 @@ public class Client
         m_Port = port;
         m_IsServer = false;
         m_Thread = new Thread(Run);
+        m_Thread.Name = "Client.Connect";
         m_Thread.Start();
     }
     public void Listen(int port)
@@ -166,7 +168,6 @@ public class Client
     private void Run()
     {
         m_IsStarted = false;
-        m_Stop = false;
         m_IsDisconnected = false;
         try
         {
@@ -197,23 +198,26 @@ public class Client
             m_Receiver = new Receiver(this);
             while (!m_Sender.m_Started || !m_Receiver.m_Started)
             {
-                Thread.Sleep(10);
+                Thread.Yield();
             }
-            m_IsStarted = true;
-            while (!m_Stop)
+            try
             {
-                try
+                lock (m_ConnectLock)
                 {
-                    Thread.Sleep(100);
+                    m_IsStarted = true;
+                    Console.WriteLine("Waiting...");
+                    Monitor.Wait(m_ConnectLock);
+                    Console.WriteLine("End waiting");
                 }
-                catch (ThreadAbortException)
-                {
-                    Console.WriteLine("ThreadAbortException");
-                    m_IsDisconnected = true;
-                }
+            }
+            catch (ThreadAbortException)
+            {
+                Console.WriteLine("ThreadAbortException");
+                m_IsDisconnected = true;
             }
             m_Client.Close();
-            Console.WriteLine("Client Stopping");
+            m_Sender.Stop();
+            Console.WriteLine("Client Stopped");
         }
         catch (SocketException)
         {
@@ -221,8 +225,8 @@ public class Client
             m_IsDisconnected = true;
         }
         m_IsStarted = false;
+        m_OnClosed?.Invoke();
     }
-
     public bool WaitForConnection()
     {
         while (!m_IsStarted)
@@ -237,7 +241,19 @@ public class Client
     }
     public void Stop()
     {
-        m_Stop = true;
+        lock(m_ConnectLock)
+        {
+            Monitor.Pulse(m_ConnectLock);
+        }
+    }
+    public void WaitForEnd()
+    {
+        Console.WriteLine("WaitForEnd begin");
+        if (m_IsStarted)
+        {
+            m_Thread.Join();
+        }
+        Console.WriteLine("WaitForEnd end");
     }
     public virtual bool Send(byte[] data)
     {
@@ -251,7 +267,6 @@ public class Client
     {
         return 0;
     }
-
 };
 
 

@@ -9,13 +9,29 @@ namespace TAgent
 {
     class Program
     {
+        public Program()
+        {
+
+        }
+
+        public void Run()
+        {
+            Client client = new Client(OnReceived);
+            client.Listen(9999);
+            client.WaitForConnection();
+            client.Send(Encoding.ASCII.GetBytes("Hello"));
+            client.WaitForEnd();
+        }
+        public void OnReceived(byte[] data)
+        {
+            Console.WriteLine("OnReceived " + data.Length + " bytes");
+        }
         static void Main(string[] args)
         {
-            Console.WriteLine("Started");
-            Client client = new Client();
-            client.Listen(9999);
-            Thread.Sleep(100000);
-            Console.WriteLine("Stopped");
+            Console.WriteLine("TAgent started");
+            var prog = new Program();
+            prog.Run();
+            Console.WriteLine("TAgent stopped");
         }
     }
 }

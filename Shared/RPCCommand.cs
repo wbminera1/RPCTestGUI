@@ -1,11 +1,13 @@
+using Shared;
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 
 public class RPCObject
 {
     const UInt32 Signature = 0x1234567;
-    enum ObjectType
+    public enum ObjectType
     {
         oFirst,
         oRequest,
@@ -17,11 +19,11 @@ public class RPCObject
     Int32       m_ObjectDataSize;
     byte[]      m_ObjectData;
 
-    RPCObject()
+    public RPCObject()
     {
-
+        m_ObjectData = new byte[0];
     }
-    RPCObject(ObjectType type)
+    public RPCObject(ObjectType type) : this()
     {
         m_ObjectType = type;
     }
@@ -57,21 +59,21 @@ public class RPCObject
     public static void Test()
     {
         RPCObject testObj = new RPCObject(ObjectType.oRequest);
-        BinaryWriter writer = new BinaryWriter(new MemoryStream(1024));
+        var memStream = new MemoryStream(1024);
+        BinaryWriter writer = new BinaryWriter(memStream);
         testObj.Serialize(writer);
-        testObj.Deserialize(new BinaryReader(writer.BaseStream));
+        memStream.Seek(0, SeekOrigin.Begin);
+        testObj.Deserialize(new BinaryReader(memStream));
     }
 }
 
-public class RPCCommand
+public class RPCRequest
 {
     static protected UInt32 RPCVersion = 0x0001;
 
-    protected enum RequestType
+    public enum RequestType
     {
         cFirst,
-        //cError,
-        //cResponse,
         cConnect,
         cDisconnect,
         cExit,
@@ -80,47 +82,75 @@ public class RPCCommand
         cLast
     };
 
-    private RequestType m_Type;
-    private UInt32 m_Id;
+    public RequestType Type { get; set; }
+    public UInt32 Id { get; set; }
 
-    protected RPCCommand(RequestType type, UInt32 id)
+    public RPCRequest()
     {
-        m_Type = type;
-        m_Id = id;
+        Type = RequestType.cFirst;
+        Id = 0;
     }
-
-    /*
-            virtual public byte[] Serialize()
-            {
-                byte[] typeBytes = BitConverter.GetBytes((Int32)m_Type);
-                byte[] idBytes = BitConverter.GetBytes(m_Id);
-                byte[] dataBytes = new byte[typeBytes.Length + idBytes.Length];
-                System.Buffer.BlockCopy(typeBytes, 0, dataBytes, 0, typeBytes.Length);
-                System.Buffer.BlockCopy(idBytes, 0, dataBytes, typeBytes.Length, idBytes.Length);
-                return dataBytes;
-            }
-    */
-
+    protected RPCRequest(RequestType type, UInt32 id)
+    {
+        Type = type;
+        Id = id;
+    }
     virtual public void Serialize(BinaryWriter writer)
     {
-        writer.Write((Int32)m_Type);
-        writer.Write(m_Id);
+        writer.Write((Int16)Type);
+        writer.Write(Id);
     }
-
-    virtual public int Deserialize(byte[] data)
+    virtual public bool Deserialize(BinaryReader reader)
     {
-        m_Type = (RequestType)BitConverter.ToInt32(data, 0);
-        m_Id = BitConverter.ToUInt32(data, sizeof(Int32));
-        return sizeof(Int32) + sizeof(UInt32);
+        bool result = false;
+        try
+        {
+            Type = (RequestType)reader.ReadInt16();
+            Id = reader.ReadUInt32();
+            result = true;
+        }
+        catch(Exception)
+        { }
+        return result;
     }
-
+    public static RPCRequest Create(byte[] data)
+    {
+        if (data.Length >= (sizeof(Int16) + sizeof(UInt32)))
+        {
+            RPCRequest rpcrequest = new RPCRequest();
+            if (rpcrequest.Deserialize(new BinaryReader(new MemoryStream(data))))
+            {
+                return rpcrequest;
+            }
+        }
+        return null;
+    }
     public static void Test()
     {
-        RPCCommand cmd = new RPCCommand(RequestType.cFirst, 0x1234);
-        /*
-                    byte[] data = cmd.Serialize();
-                    cmd.Deserialize(data);
-        */
+        RPCRequest req = new RPCRequest(RequestType.cFirst, 0x1234);
+        var memStream = new MemoryStream(1024);
+        BinaryWriter writer = new BinaryWriter(memStream);
+        req.Serialize(writer);
+        memStream.Seek(0, SeekOrigin.Begin);
+        req.Deserialize(new BinaryReader(memStream));
+
+        RPCRequest creq = Singleton<RPCRequestFactory>.Instance.Create(RPCRequest.RequestType.cConnect);
+    }
+
+}
+
+public class RPCRequestFactory : GenericFactory<RPCRequest.RequestType>
+{
+    public RPCRequestFactory()
+    {
+        Register<RPCRequest>(RPCRequest.RequestType.cFirst);
+        Register<RPCRequestConnect>(RPCRequest.RequestType.cConnect);
+    }
+    public RPCRequest Create(RPCRequest.RequestType reqType, UInt32 id = 0)
+    {
+        RPCRequest req = base.Create<RPCRequest>(reqType);
+        req.Id = id;
+        return req;
     }
 }
 
@@ -136,22 +166,28 @@ public class RPCResponse
 
 }
 
-public class RPCCommandConnect : RPCCommand
+public class RPCRequestConnect : RPCRequest
 {
 
     private UInt32 m_Version;
 
-    public RPCCommandConnect(UInt32 id) : base(RequestType.cConnect, id)
+    public RPCRequestConnect() : base(RequestType.cConnect, 0)
+    {
+
+    }
+    public RPCRequestConnect(UInt32 id) : base(RequestType.cConnect, id)
     {
         m_Version = RPCVersion;
     }
 
+/*
     public override int Deserialize(byte[] data)
     {
         int offset = base.Deserialize(data);
         m_Version = BitConverter.ToUInt32(data, offset);
         return offset + sizeof(UInt32);
     }
+*/
 
     /*
         public override byte[] Serialize()
@@ -175,8 +211,8 @@ public class RPCCommandConnect : RPCCommand
 
 public interface ICommandHandler
 {
-    bool Receive(RPCCommand cmd);
-    bool Send(RPCCommand cmd);
+    bool Receive(RPCRequest cmd);
+    bool Send(RPCRequest cmd);
 }
 
 class CommandDispatcher
@@ -194,12 +230,12 @@ class ClientCommandHandler : Client, ICommandHandler
         Connect("127.0.0.1", 9999);
     }
 
-    public bool Receive(RPCCommand cmd)
+    public bool Receive(RPCRequest cmd)
     {
         throw new NotImplementedException();
     }
 
-    public bool Send(RPCCommand cmd)
+    public bool Send(RPCRequest cmd)
     {
         var stream = new MemoryStream();
         var writer = new BinaryWriter(stream);
